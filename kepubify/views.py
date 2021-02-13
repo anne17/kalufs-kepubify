@@ -10,6 +10,7 @@ import re
 import shlex
 import string
 import subprocess
+import traceback
 from pathlib import Path
 
 from flask import Blueprint, current_app, jsonify, render_template, request, send_file, url_for
@@ -42,6 +43,7 @@ def upload():
             try:
                 new_filename = convert(save_as)
             except Exception as err:
+                current_app.logger.error(traceback.format_exc())
                 return jsonify({"status": "fail", "message": str(err)})
             download_url = url_for("general.download", filename=new_filename, path=filepath)
             return jsonify({"status": "success", "filename": new_filename, "download": download_url})
@@ -66,7 +68,7 @@ def convert(in_filepath):
     new_filename = in_filepath.stem + ".kepub" + ".epub"
     new_filepath = str(in_filepath.parent / Path(new_filename))
     p = subprocess.run([current_app.config.get("KEPUBIFY_PATH"), str(in_filepath), "-o", new_filepath],
-                       capture_output=True)
+                       stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     if p.returncode != 0:
         stderr = p.stderr.decode() or ""
         current_app.logger.error(stderr)
