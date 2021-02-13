@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.ico') }}"/>
+    <link href="{{ url_for('static', filename='styles.css') }}" type="text/css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://rawgit.com/enyo/dropzone/master/dist/dropzone.css">
+    <title>kalufs-kepubify</title>
+  </head>
+
+  <body>
+
+    <div class="header">
+      <h1>Convert epub to kepub</h1>
+    </div>
+
+    <p>
+      This service uses the <a href="https://pgaskin.net/kepubify/">kepubify tool</a>.
+      <br>
+      Kepub is the ebook format used on Kobo devices (more info
+      <a target="blank" href="https://wiki.mobileread.com/wiki/Kepub">here</a>).
+    </p>
+    <p>
+      When uploading an epub file it will be converted to kepub and the converted file will be downloaded to your device
+      automatically and is deleted from the server immediately.
+    </p>
+
+    <div class="upload" style="clear: both;">
+      <form class="dropzone" id="myDropzone" action="{{ url_for('general.upload') }}" method="POST">
+        <div class="dz-message">
+          Drop an <b>.epub</b> file here or click to upload!<br>
+          
+        </div>
+      </form>
+      <!-- <button class="convert-button" type="button" value="Upload file" onclick="loading();">Convert!</button>
+      <img class="loading" src="{{ url_for('static', filename='loading.gif') }}"></img> -->
+    </div>
+
+    <div id="success" class="message success"></div>
+    <div id="error" class="message error"></div>
+  </body>
+
+  <script src="https://rawgit.com/enyo/dropzone/master/dist/dropzone.js"></script>
+  <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+  <script type="text/javascript">
+      function loading(){
+          jQuery(".messages-block").hide();
+          jQuery(".loading").show();
+          jQuery(".main").css("cursor", "wait");
+      }
+      Dropzone.options.myDropzone = {
+        paramName: "file", // The name that will be used to transfer the file
+        maxFilesize: 10, // MB
+        acceptedFiles: ".epub",
+        success: function(file, response){
+          console.log(response)
+          $("#error").hide();
+          $("#success").hide();
+          if (response.status == "fail") {
+            $("#error").text(response.message);
+            $("#error").show();
+          } else {
+            $("#success").text("Downloaded '" + response.filename + "' successfully!");
+            $("#success").show();
+            window.location = response.download;
+          }
+        },
+        error: function(file, errorMessage){
+          $("#success").hide();
+          $("#error").text(errorMessage);
+          $("#error").show();
+        },
+        complete: function (file) { // Called when the upload was either successful or erroneous
+          this.removeFile(file);
+        }
+      };
+  </script>
+</html>
