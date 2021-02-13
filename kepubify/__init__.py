@@ -17,12 +17,12 @@ def create_app():
     """Instanciate app."""
     app = Flask(__name__)
 
-    # Read config
-    if os.path.exists(app.config.root_path + "/../config.py") is False:
-        print("copy config_default.py to config.py and add your settings")
-        app.config.from_pyfile(app.config.root_path + "/../config_default.py")
-    else:
-        app.config.from_pyfile(app.config.root_path + "/../config.py")
+    # Set default config
+    app.config.from_object("config")
+
+    # Overwrite with instance config
+    if os.path.exists(os.path.join(app.instance_path, "config.py")):
+        app.config.from_pyfile(os.path.join(app.instance_path, "config.py"))
 
     app.secret_key = app.config["SECRET_KEY"]
 
