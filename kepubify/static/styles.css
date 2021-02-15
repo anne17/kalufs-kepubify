@@ -38,32 +38,6 @@ a:hover {
     color: rgb(83, 83, 83);
 }
 
-/* .convert-button {
-    margin-top: 20px;
-    background-color: #4CAF50;
-    border: 2px solid #4CAF50;
-    color: white;
-    padding: 15px 32px;
-    text-align: center;
-    text-decoration: none;
-    display: inline-block;
-    font-size: 16px;
-    transition-duration: 0.4s;
-}
-.convert-button:hover {
-    cursor: pointer;
-    color: #4CAF50;
-    background-color: white;
-    border: 2px solid #4CAF50;
-} */
-
-.loading {
-    height: 3em;
-    padding-left: 10px;
-    display: none;
-    vertical-align: middle;
-}
-
 .upload .dropzone {
     border: 2px dashed #0087F7 !important;
     border-radius: 5px !important;

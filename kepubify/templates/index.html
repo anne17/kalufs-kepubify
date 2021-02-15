@@ -21,18 +21,17 @@
     </p>
     <p>
       When uploading an epub file it will be converted to kepub and the converted file will be downloaded to your device
-      automatically and is deleted from the server immediately.
+      automatically.
+      <br>
+      All uploaded files are deleted from the server immediately.
     </p>
 
     <div class="upload" style="clear: both;">
       <form class="dropzone" id="myDropzone" action="{{ url_for('general.upload') }}" method="POST">
         <div class="dz-message">
           Drop an <b>.epub</b> file here or click to upload!<br>
-          
         </div>
       </form>
-      <!-- <button class="convert-button" type="button" value="Upload file" onclick="loading();">Convert!</button>
-      <img class="loading" src="{{ url_for('static', filename='loading.gif') }}"></img> -->
     </div>
 
     <div id="success" class="message success"></div>
@@ -42,11 +41,6 @@
   <script src="https://rawgit.com/enyo/dropzone/master/dist/dropzone.js"></script>
   <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
   <script type="text/javascript">
-      function loading(){
-          jQuery(".messages-block").hide();
-          jQuery(".loading").show();
-          jQuery(".main").css("cursor", "wait");
-      }
       Dropzone.options.myDropzone = {
         paramName: "file", // The name that will be used to transfer the file
         maxFilesize: 10, // MB
