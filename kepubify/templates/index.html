@@ -8,34 +8,35 @@
   </head>
 
   <body>
+    <div class="main">
+      <div class="header">
+        <h1>Convert epub to kepub</h1>
+      </div>
 
-    <div class="header">
-      <h1>Convert epub to kepub</h1>
+      <p>
+        This service uses the <a href="https://pgaskin.net/kepubify/">kepubify tool</a>.
+        <br>
+        Kepub is the ebook format used on Kobo devices (more info
+        <a target="blank" href="https://wiki.mobileread.com/wiki/Kepub">here</a>).
+      </p>
+      <p>
+        When uploading an epub file it will be converted to kepub and the converted file will be downloaded to your device
+        automatically.
+        <br>
+        All uploaded files are deleted from the server immediately.
+      </p>
+
+      <div class="upload" style="clear: both;">
+        <form class="dropzone" id="myDropzone" action="{{ url_for('general.upload') }}" method="POST">
+          <div class="dz-message">
+            Drop an <b>.epub</b> file here or click to upload!<br>
+          </div>
+        </form>
+      </div>
+
+      <div id="success" class="message success"></div>
+      <div id="error" class="message error"></div>
     </div>
-
-    <p>
-      This service uses the <a href="https://pgaskin.net/kepubify/">kepubify tool</a>.
-      <br>
-      Kepub is the ebook format used on Kobo devices (more info
-      <a target="blank" href="https://wiki.mobileread.com/wiki/Kepub">here</a>).
-    </p>
-    <p>
-      When uploading an epub file it will be converted to kepub and the converted file will be downloaded to your device
-      automatically.
-      <br>
-      All uploaded files are deleted from the server immediately.
-    </p>
-
-    <div class="upload" style="clear: both;">
-      <form class="dropzone" id="myDropzone" action="{{ url_for('general.upload') }}" method="POST">
-        <div class="dz-message">
-          Drop an <b>.epub</b> file here or click to upload!<br>
-        </div>
-      </form>
-    </div>
-
-    <div id="success" class="message success"></div>
-    <div id="error" class="message error"></div>
   </body>
 
   <script src="https://rawgit.com/enyo/dropzone/master/dist/dropzone.js"></script>

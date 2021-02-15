@@ -1,13 +1,16 @@
+
 body {
-    font: 1em Arial, Sans-Serif;
-    font-size: 16px;
-    line-height: 1.5em;
+    font: 16px Arial, Sans-Serif;
     color: #444;
-    width: 500px;
-    margin: 0 auto;
     align-content: center;
     text-align: center;
     padding-bottom: 20px;
+}
+
+.main {
+    line-height: 1.5em;
+    width: 500px;
+    margin: 0 auto;
 }
 
 h1 {
@@ -68,14 +71,16 @@ a:hover {
 }
 
 
+/* Mobile devices */
 @media only screen and (max-width: 1024px) {
-  /* Mobile devices */
-  body {
-    font-size: 1.3rem;
-    line-height: 1.2;
+  .main {
     width: 90%;
+    line-height: 1.2;
+    font-size: 1.2em;
   }
+
   h1 {
+    font-size: 1.5em;
     margin-top: 100px;
   }
 
@@ -83,7 +88,4 @@ a:hover {
     margin-top: 50px !important;
   }
 
-  .message {
-      font-size: 30px;
-  }
 }
