@@ -7,14 +7,12 @@ Inspired by: http://flask.pocoo.org/docs/0.11/patterns/fileuploads/
 import logging
 import random
 import re
-import shlex
 import string
 import subprocess
 import traceback
 from pathlib import Path
 
-from flask import Blueprint, current_app, jsonify, render_template, request, send_file, url_for
-from werkzeug.utils import secure_filename
+from flask import Blueprint, current_app, jsonify, render_template, request, send_from_directory, url_for
 
 general = Blueprint("general", __name__)
 log = logging.getLogger("validatems" + __name__)
@@ -29,6 +27,7 @@ def index():
 @general.route("/upload", methods=["POST"])
 def upload():
     """Upload epub file, convert it and return download URL."""
+    file_id = ""
     try:
         upload_file = request.files["file"]
 
@@ -37,35 +36,43 @@ def upload():
             log.warning("No file uploaded!")
             return jsonify({"status": "fail", "message": "No file uploaded!"})
         else:
-            filepath, filename = create_filepath(secure_filename(upload_file.filename))
-            save_as = Path(current_app.instance_path) / filepath / filename
+            if upload_file.filename.endswith(".kepub.epub"):
+                return jsonify({"status": "fail", "message": 'Wrong file extension: ".kepub.epub". '
+                                'Looks like you tried to upload a kepub file!'})
+
+            random_filename = create_filename(upload_file.filename)
+            file_id = random_filename[:-5]
+            new_name = Path(upload_file.filename).stem + ".kepub.epub"
+            tmp_dir = Path(current_app.instance_path) / Path(current_app.config.get("TMP_DIR"))
+            tmp_dir.mkdir(exist_ok=True)
+            save_as = tmp_dir / Path(random_filename)
             upload_file.save(str(save_as))
             try:
                 new_filename = convert(save_as)
             except Exception as err:
                 current_app.logger.error(traceback.format_exc())
-                return jsonify({"status": "fail", "message": str(err)})
-            download_url = url_for("general.download", filename=new_filename, path=filepath)
-            return jsonify({"status": "success", "filename": new_filename, "download": download_url})
+                return jsonify({"status": "fail", "message": str(err), "id": file_id})
+            download_url = url_for("general.download", file=new_filename, name=new_name, id=file_id)
+            return jsonify({"status": "success", "filename": new_name, "download": download_url})
 
     # Unexpected error
     except Exception as e:
         log.exception("Unexpected error: %s" % e)
-        return jsonify({"status": "fail", "message": "unexpected error"})
+        return jsonify({"status": "fail", "message": "unexpected error", "id": file_id})
 
 
 @general.route("/download")
 def download():
     """Download file."""
-    filename = request.args.get("filename")
-    random_path = request.args.get("path")
-    path = Path(current_app.instance_path) / Path(random_path) / Path(filename)
-    return send_file(str(path), mimetype="application/epub+zip", as_attachment=True)
+    filename = request.args.get("file")
+    new_name = request.args.get("name")
+    tmp_dir = Path(current_app.instance_path) / Path(current_app.config.get("TMP_DIR"))
+    return send_from_directory(str(tmp_dir), filename, attachment_filename=new_name, as_attachment=True)
 
 
 def convert(in_filepath):
     """Convert in_file to kepub and return new file name."""
-    new_filename = in_filepath.stem + ".kepub" + ".epub"
+    new_filename = in_filepath.stem + ".kepub.epub"
     new_filepath = str(in_filepath.parent / Path(new_filename))
     p = subprocess.run([current_app.config.get("KEPUBIFY_PATH"), str(in_filepath), "-o", new_filepath],
                        stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -78,10 +85,8 @@ def convert(in_filepath):
     return new_filename
 
 
-def create_filepath(in_filename):
+def create_filename(in_filename):
     """Create random filepath."""
     random_str_len = 10
-    random_dir = Path("".join(random.choices(string.ascii_lowercase + string.digits, k=random_str_len)))
-    (Path(current_app.instance_path) / random_dir).mkdir()
-    filename = Path(shlex.quote(in_filename))
-    return random_dir, filename
+    random_name = "".join(random.choices(string.ascii_lowercase + string.digits, k=random_str_len))
+    return random_name + ".epub"

@@ -46,6 +46,7 @@
         paramName: "file", // The name that will be used to transfer the file
         maxFilesize: 10, // MB
         acceptedFiles: ".epub",
+        uploadMultiple: false,
         success: function(file, response){
           $("#error").hide();
           $("#success").hide();
@@ -53,7 +54,7 @@
             $("#error").text(response.message);
             $("#error").show();
           } else {
-            $("#success").text("Downloaded '" + response.filename + "' successfully!");
+            $("#success").text('Downloaded "' + response.filename + '" successfully!');
             $("#success").show();
             window.location = response.download;
           }

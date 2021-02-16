@@ -56,21 +56,28 @@ def create_app():
     from . import views
     app.register_blueprint(views.general)
 
-    # Cleanup after download
+    # Cleanup uploaded files
     @app.after_request
     def cleanup(response):
-        if str(request.url_rule) == "/download" or (response.json and response.json.get("status") == "fail"):
-            kepubify_exe = Path(app.config.get("KEPUBIFY_PATH")).name
-            for child in Path(app.instance_path).iterdir():
-                if child.is_dir() and child.name != kepubify_exe:
+        tmp_dir = Path(app.instance_path) / Path(app.config.get("TMP_DIR"))
+        # Cleanup on error
+        if response.json:
+            if response.json.get("status") == "fail" and response.json.get("id"):
+                for child in tmp_dir.iterdir():
+                    if str(child.name).startswith(response.json.get("id")):
+                        try:
+                            child.unlink()
+                        except Exception as e:
+                            log.error('Failed to remove %s. Reason: %s' % (child, e))
+        # Cleanup after download
+        if str(request.url_rule) == "/download":
+            for child in tmp_dir.iterdir():
+                if str(child.name).startswith(request.args.get("id")):
                     try:
-                        for c in child.iterdir():
-                            c.unlink()
-                        child.rmdir()
+                        child.unlink()
                     except Exception as e:
                         log.error('Failed to remove %s. Reason: %s' % (child, e))
         return response
-
     return app
 
 

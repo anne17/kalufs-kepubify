@@ -20,3 +20,6 @@ APPLICATION_ROOT = ""
 
 # kepubify config
 KEPUBIFY_PATH = "/home/anne/projects/kalufs-kepubify/instance/kepubify-linux-64bit"
+
+# Dir for temporary file storage
+TMP_DIR = "tmp"
