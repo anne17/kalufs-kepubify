@@ -1,5 +1,6 @@
 instance
 logs
+tmp
 
 # Editors
 .idea/
@@ -9,6 +10,8 @@ logs
 __pycache__/
 *.py[cod]
 *$py.class
+
+.ruff_cache/
 
 # Environments
 .env

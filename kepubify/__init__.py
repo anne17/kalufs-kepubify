@@ -1,7 +1,6 @@
 """Initialise Flask application."""
 
 import logging
-import os
 import sys
 import time
 from pathlib import Path
@@ -21,8 +20,9 @@ def create_app():
     app.config.from_object("config")
 
     # Overwrite with instance config
-    if os.path.exists(os.path.join(app.instance_path, "config.py")):
-        app.config.from_pyfile(os.path.join(app.instance_path, "config.py"))
+    instance_config = Path(app.instance_path) / "config.py"
+    if instance_config.exists():
+        app.config.from_pyfile(str(instance_config))
 
     app.secret_key = app.config["SECRET_KEY"]
 
@@ -35,17 +35,15 @@ def create_app():
                             format=logfmt, datefmt=datefmt)
     else:
         today = time.strftime("%Y-%m-%d")
-        logdir = app.config.get("LOG_DIR")
-        logfile = os.path.join(logdir, f"{today}.log")
+        logdir = app.config["LOG_DIR"]
+        logfile = logdir / f"{today}.log"
         # Create log dir if it does not exist
-        if not os.path.exists(logdir):
-            os.makedirs(logdir)
+        logdir.mkdir(parents=True, exist_ok=True)
         logging.basicConfig(filename=logfile, level=logging.INFO,
                             format=logfmt, datefmt=datefmt)
 
     # Create instance_folder if it does not exist
-    if not os.path.exists(app.instance_path):
-        os.makedirs(app.instance_path)
+    Path(app.instance_path).mkdir(parents=True, exist_ok=True)
 
     log.info("Application restarted")
 
@@ -59,29 +57,28 @@ def create_app():
     # Cleanup uploaded files
     @app.after_request
     def cleanup(response):
-        tmp_dir = Path(app.instance_path) / Path(app.config.get("TMP_DIR"))
+        tmp_dir = Path(app.instance_path) / app.config["TMP_DIR"]
         # Cleanup on error
-        if response.json:
-            if response.json.get("status") == "fail" and response.json.get("id"):
-                for child in tmp_dir.iterdir():
-                    if str(child.name).startswith(response.json.get("id")):
-                        try:
-                            child.unlink()
-                        except Exception as e:
-                            log.error('Failed to remove %s. Reason: %s' % (child, e))
+        if response.json and response.json.get("status") == "fail" and response.json.get("id"):
+            for child in tmp_dir.iterdir():
+                if str(child.name).startswith(response.json.get("id")):
+                    try:
+                        child.unlink()
+                    except OSError as e:
+                        log.error("Failed to remove %s. Reason: %s", child, e)
         # Cleanup after download
         if str(request.url_rule) == "/download":
             for child in tmp_dir.iterdir():
-                if str(child.name).startswith(request.args.get("id")):
+                if str(child.name).startswith(request.args.get("id", "")):
                     try:
                         child.unlink()
-                    except Exception as e:
-                        log.error('Failed to remove %s. Reason: %s' % (child, e))
+                    except OSError as e:
+                        log.error("Failed to remove %s. Reason: %s", child, e)
         return response
     return app
 
 
-class FixScriptName(object):
+class FixScriptName:
     """Set the environment SCRIPT_NAME."""
     def __init__(self, app, config):
         self.app = app

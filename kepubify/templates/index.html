@@ -1,9 +1,8 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.ico') }}"/>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.ico') }}" />
     <link href="{{ url_for('static', filename='styles.css') }}" type="text/css" rel="stylesheet" />
-    <link rel="stylesheet" href="https://rawgit.com/enyo/dropzone/master/dist/dropzone.css">
     <title>kalufs-kepubify</title>
     <meta name="robots" content="noindex, nofollow">
   </head>
@@ -21,53 +20,93 @@
         <a target="blank" href="https://wiki.mobileread.com/wiki/Kepub">here</a>).
       </p>
       <p>
-        When uploading an epub file it will be converted to kepub and the converted file will be downloaded to your device
+        When uploading an epub file it will be converted to kepub and the converted file will be downloaded to your
+        device
         automatically.
         <br>
         All uploaded files are deleted from the server immediately.
       </p>
 
-      <div class="upload" style="clear: both;">
-        <form class="dropzone" id="myDropzone" action="{{ url_for('general.upload') }}" method="POST">
-          <div class="dz-message">
-            Drop an <b>.epub</b> file here or click to upload!<br>
-          </div>
+      <div class="upload">
+        <form class="upload-form" id="upload-form" action="{{ url_for('general.upload') }}" method="POST"
+          enctype="multipart/form-data">
+          <label class="dropzone" id="drop-area" for="file">
+            <span id="drop-message">Drop an <b>.epub</b> file here or click to choose one.</span>
+            <input id="file" name="file" type="file" accept=".epub,application/epub+zip" required>
+          </label>
+          <button id="submit-button" type="submit">Convert and download</button>
         </form>
       </div>
 
-      <div id="success" class="message success"></div>
-      <div id="error" class="message error"></div>
+      <div id="success" class="message success" role="status" aria-live="polite" hidden></div>
+      <div id="error" class="message error" role="alert" hidden></div>
     </div>
-  </body>
 
-  <script src="https://rawgit.com/enyo/dropzone/master/dist/dropzone.js"></script>
-  <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
-  <script type="text/javascript">
-      Dropzone.options.myDropzone = {
-        paramName: "file", // The name that will be used to transfer the file
-        maxFilesize: 10, // MB
-        acceptedFiles: ".epub",
-        uploadMultiple: false,
-        success: function(file, response){
-          $("#error").hide();
-          $("#success").hide();
-          if (response.status == "fail") {
-            $("#error").text(response.message);
-            $("#error").show();
-          } else {
-            $("#success").text('Downloaded "' + response.filename + '" successfully!');
-            $("#success").show();
-            window.location = response.download;
-          }
-        },
-        error: function(file, errorMessage){
-          $("#success").hide();
-          $("#error").text(errorMessage);
-          $("#error").show();
-        },
-        complete: function (file) { // Called when the upload was either successful or erroneous
-          this.removeFile(file);
+    <script>
+      const form = document.getElementById("upload-form");
+      const fileInput = document.getElementById("file");
+      const dropArea = document.getElementById("drop-area");
+      const dropMessage = document.getElementById("drop-message");
+      const submitButton = document.getElementById("submit-button");
+      const successMessage = document.getElementById("success");
+      const errorMessage = document.getElementById("error");
+
+      function showFileName(file) {
+        dropMessage.textContent = file ? file.name : "Drop an .epub file here or click to choose one.";
+      }
+
+      fileInput.addEventListener("change", () => showFileName(fileInput.files[0]));
+
+      for (const eventName of ["dragenter", "dragover"]) {
+        dropArea.addEventListener(eventName, (event) => {
+          event.preventDefault();
+          dropArea.classList.add("is-dragging");
+        });
+      }
+
+      for (const eventName of ["dragleave", "drop"]) {
+        dropArea.addEventListener(eventName, (event) => {
+          event.preventDefault();
+          dropArea.classList.remove("is-dragging");
+        });
+      }
+
+      dropArea.addEventListener("drop", (event) => {
+        if (event.dataTransfer.files.length) {
+          fileInput.files = event.dataTransfer.files;
+          showFileName(fileInput.files[0]);
         }
-      };
-  </script>
+      });
+
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        successMessage.hidden = true;
+        errorMessage.hidden = true;
+        submitButton.disabled = true;
+        submitButton.textContent = "Converting...";
+
+        try {
+          const response = await fetch(form.action, {
+            method: "POST",
+            body: new FormData(form),
+            headers: { Accept: "application/json" }
+          });
+          const result = await response.json();
+          if (!response.ok || result.status !== "success") {
+            throw new Error(result.message || "Upload failed. Please try again.");
+          }
+
+          successMessage.textContent = `Converted "${result.filename}". Download starting...`;
+          successMessage.hidden = false;
+          window.location.assign(result.download);
+        } catch (error) {
+          errorMessage.textContent = error.message || "Upload failed. Please try again.";
+          errorMessage.hidden = false;
+        } finally {
+          submitButton.disabled = false;
+          submitButton.textContent = "Convert and download";
+        }
+      });
+    </script>
+  </body>
 </html>
