@@ -32,7 +32,8 @@
           enctype="multipart/form-data">
           <label class="dropzone" id="drop-area" for="file">
             <span id="drop-message">Drop an <b>.epub</b> file here or click to choose one.</span>
-            <input id="file" name="file" type="file" accept=".epub,application/epub+zip" required>
+            <input id="file" name="file" type="file" accept=".epub,application/epub+zip"
+              data-max-size-bytes="{{ max_upload_size_bytes }}" required>
           </label>
           <button id="submit-button" type="submit">Convert and download</button>
         </form>
@@ -50,6 +51,7 @@
       const submitButton = document.getElementById("submit-button");
       const successMessage = document.getElementById("success");
       const errorMessage = document.getElementById("error");
+      const maxUploadSizeBytes = Number(fileInput.dataset.maxSizeBytes);
 
       function showFileName(file) {
         dropMessage.textContent = file ? file.name : "Drop an .epub file here or click to choose one.";
@@ -82,6 +84,13 @@
         event.preventDefault();
         successMessage.hidden = true;
         errorMessage.hidden = true;
+        const selectedFile = fileInput.files[0];
+        if (selectedFile && selectedFile.size > maxUploadSizeBytes) {
+          const maxSizeMiB = maxUploadSizeBytes / (1024 * 1024);
+          errorMessage.textContent = `File exceeds the ${maxSizeMiB} MB upload limit.`;
+          errorMessage.hidden = false;
+          return;
+        }
         submitButton.disabled = true;
         submitButton.textContent = "Converting...";
 

@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from pydantic import field_validator
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     tmp_dir: Path = PROJECT_ROOT / "instance" / "tmp"  # Dir for temporary file storage
 
     temp_file_retention_seconds: int = 24 * 60 * 60  # Retention period for temporary files in seconds
+    max_upload_size_bytes: int = Field(default=10 * 1024 * 1024, gt=0)
 
     @field_validator("application_root")
     @classmethod

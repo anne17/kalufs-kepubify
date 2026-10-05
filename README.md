@@ -9,8 +9,8 @@ Small FastAPI application for converting epub into kepub.
 * [kepubify](https://pgaskin.net/kepubify/)
 
 Local, non-Docker runs require a Linux x86-64 kepubify binary; see the setup steps below. Docker downloads kepubify
-v4.0.4 for Linux x86-64 and verifies its pinned SHA-256 checksum, so no local binary is needed for a Docker build.
-The Compose image targets `linux/amd64` (64-bit x86). It runs natively on x86-64 hosts; ARM hosts need Docker's AMD64
+v4.0.4 for Linux x86-64 and verifies its pinned SHA-256 checksum, so no local binary is needed for a Docker build. The
+Compose image targets `linux/amd64` (64-bit x86). It runs natively on x86-64 hosts; ARM hosts need Docker's AMD64
 emulation support.
 
 ## Setup
@@ -26,8 +26,11 @@ emulation support.
 ## Settings
 
 Settings are loaded from environment variables and the project-root `.env` file, with environment variables taking
-priority. Available values include `DEBUG`, `LOG_DIR`, `APPLICATION_ROOT`, `INSTANCE_PATH`, `KEPUBIFY_PATH`, and
-`TMP_DIR`.
+priority. Available values include `DEBUG`, `LOG_DIR`, `APPLICATION_ROOT`, `INSTANCE_PATH`, `KEPUBIFY_PATH`, `TMP_DIR`,
+and `MAX_UPLOAD_SIZE_BYTES`.
+
+The upload limit defaults to 10 MB (`10485760` bytes). Set `MAX_UPLOAD_SIZE_BYTES` to change it; values must be
+positive. The server rejects larger files with HTTP 413, and the upload page checks the selected file before submitting.
 
 Converted files are removed after download, and failed uploads are cleaned up immediately. At startup, temporary files
 older than `temp_file_retention_seconds` are removed. The default retention period is 24 hours.
@@ -44,8 +47,8 @@ The Docker build downloads kepubify v4.0.4 directly from its GitHub release and 
 the local binary is not required for Docker builds.
 
 Open `http://localhost:8082`. Compose stores temporary files and application logs in named volumes. Override `PORT`,
-`DEBUG`, `APPLICATION_ROOT`, or `TEMP_FILE_RETENTION_SECONDS` in a project-root `.env` file. Stop the container with
-`docker compose down`; named volumes are retained unless removed explicitly.
+`DEBUG`, `APPLICATION_ROOT`, `MAX_UPLOAD_SIZE_BYTES`, or `TEMP_FILE_RETENTION_SECONDS` in a project-root `.env` file.
+Stop the container with `docker compose down`; named volumes are retained unless removed explicitly.
 
 ## Deploying
 
@@ -60,7 +63,7 @@ For a Linux server:
    `http://127.0.0.1:8082` (or the configured `PORT`). The Compose port is loopback-only by default, so it is not
    directly exposed to the network.
 
-The upload endpoint is unauthenticated and the app does not enforce an upload-size limit. Before exposing it publicly,
-configure request-size limits and rate limiting at the reverse proxy. To deploy an update, pull the new code and run
-`docker compose up --build --detach`. `docker compose down` stops the service while retaining its named volumes;
-`docker compose down --volumes` also deletes temporary files and logs.
+The upload endpoint is unauthenticated. Before exposing it publicly, configure rate limiting at the reverse proxy and
+allow at least the configured upload limit plus multipart overhead. To deploy an update, pull the new code and run
+`docker compose up --build --detach`. `docker compose down` stops the service while retaining its named volumes; `docker
+compose down --volumes` also deletes temporary files and logs.

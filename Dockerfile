@@ -37,6 +37,7 @@ ENV PATH="/app/.venv/bin:${PATH}" \
     INSTANCE_PATH=/app/instance \
     KEPUBIFY_PATH=/usr/local/bin/kepubify \
     TMP_DIR=/app/instance/tmp \
+    MAX_UPLOAD_SIZE_BYTES=10485760 \
     TEMP_FILE_RETENTION_SECONDS=86400
 
 USER app

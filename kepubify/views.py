@@ -23,7 +23,11 @@ logger = logging.getLogger(__name__)
 @router.get("/", name="index")
 def index(request: Request):
     """Render the upload page."""
-    return templates.TemplateResponse(request=request, name="index.html", context={})
+    return templates.TemplateResponse(
+        request=request,
+        name="index.html",
+        context={"max_upload_size_bytes": settings.max_upload_size_bytes},
+    )
 
 
 @router.post("/upload", name="upload")
@@ -34,6 +38,12 @@ def upload(request: Request, file: Annotated[UploadFile | None, File()] = None):
         if file is None or not file.filename:
             logger.warning("No file uploaded!")
             return JSONResponse({"status": "fail", "message": "No file uploaded!"}, status_code=400)
+        if file.size is not None and file.size > settings.max_upload_size_bytes:
+            max_size_mib = settings.max_upload_size_bytes / (1024 * 1024)
+            return JSONResponse(
+                {"status": "fail", "message": f"File exceeds the {max_size_mib:g} MB upload limit."},
+                status_code=413,
+            )
 
         original_filename = Path(file.filename.replace("\\", "/")).name
         lowercase_filename = original_filename.lower()
