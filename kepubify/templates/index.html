@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.ico') }}" />
-    <link href="{{ url_for('static', filename='styles.css') }}" type="text/css" rel="stylesheet" />
+    <link rel="icon" type="image/png" href="{{ request.url_for('static', path='favicon.ico') }}" />
+    <link href="{{ request.url_for('static', path='styles.css') }}" type="text/css" rel="stylesheet" />
     <title>kalufs-kepubify</title>
     <meta name="robots" content="noindex, nofollow">
   </head>
@@ -28,7 +28,7 @@
       </p>
 
       <div class="upload">
-        <form class="upload-form" id="upload-form" action="{{ url_for('general.upload') }}" method="POST"
+        <form class="upload-form" id="upload-form" action="{{ request.url_for('upload') }}" method="POST"
           enctype="multipart/form-data">
           <label class="dropzone" id="drop-area" for="file">
             <span id="drop-message">Drop an <b>.epub</b> file here or click to choose one.</span>
@@ -96,7 +96,7 @@
             throw new Error(result.message || "Upload failed. Please try again.");
           }
 
-          successMessage.textContent = `Converted "${result.filename}". Download starting...`;
+          successMessage.textContent = `Converted "${result.filename}". Download started...`;
           successMessage.hidden = false;
           window.location.assign(result.download);
         } catch (error) {

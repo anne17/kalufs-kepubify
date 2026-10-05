@@ -1,24 +1,22 @@
 [project]
 name = "kalufs-kepubify"
-version = "0.1.0"
+version = "0.2.0"
 readme = "README.md"
-description = "Small flask application for converting epub into kepub."
+description = "Small FastAPI application for converting epub into kepub."
 requires-python = ">=3.12"
 
 dependencies = [
-    "flask==3.1.3",
-    "flask-reverse-proxy==0.2.0.2",
+    "fastapi>=0.115,<1.0",
+    "jinja2>=3.1.6",
+    "pydantic-settings>=2.15.0",
+    "python-multipart>=0.0.32",
+    "uvicorn[standard]>=0.54.0",
 ]
 
 [dependency-groups]
 dev = [
     "pyright>=1.1.414",
     "ruff",
-]
-
-[project.optional-dependencies]
-server = [
-    "gunicorn>=26.2.0",
 ]
 
 [tool.pyright]

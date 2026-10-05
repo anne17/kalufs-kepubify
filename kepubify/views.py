@@ -1,102 +1,123 @@
-"""
-Small application for uploading files to a server.
-
-Inspired by: http://flask.pocoo.org/docs/0.11/patterns/fileuploads/
-"""
+"""HTTP routes for the EPUB conversion service."""
 
 import logging
-import random
 import re
-import string
+import shutil
 import subprocess
-import traceback
 from pathlib import Path
+from secrets import token_hex
+from typing import Annotated
 
-from flask import Blueprint, current_app, jsonify, render_template, request, send_from_directory, url_for
+from fastapi import APIRouter, File, Request, UploadFile
+from fastapi.responses import FileResponse, JSONResponse, Response
+from fastapi.templating import Jinja2Templates
+from starlette.background import BackgroundTask
 
-general = Blueprint("general", __name__)
-log = logging.getLogger("validatems" + __name__)
+from .config import settings
+
+router = APIRouter()
+templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
+logger = logging.getLogger(__name__)
 
 
-@general.route("/", methods=["GET"])
-def index():
-    """Render index.html."""
-    return render_template("index.html")
+@router.get("/", name="index")
+def index(request: Request):
+    """Render the upload page."""
+    return templates.TemplateResponse(request=request, name="index.html", context={})
 
 
-@general.route("/upload", methods=["POST"])
-def upload():
+@router.post("/upload", name="upload")
+def upload(request: Request, file: Annotated[UploadFile | None, File()] = None):
     """Upload epub file, convert it and return download URL."""
     file_id = ""
     try:
-        upload_file = request.files.get("file")
-        if upload_file is None or not upload_file.filename:
-            # User did not select a file
-            log.warning("No file uploaded!")
-            return jsonify({"status": "fail", "message": "No file uploaded!"})
+        if file is None or not file.filename:
+            logger.warning("No file uploaded!")
+            return JSONResponse({"status": "fail", "message": "No file uploaded!"}, status_code=400)
 
-        original_filename = upload_file.filename
+        original_filename = Path(file.filename.replace("\\", "/")).name
         lowercase_filename = original_filename.lower()
         if lowercase_filename.endswith(".kepub.epub"):
-            return jsonify({"status": "fail", "message": 'Wrong file extension: ".kepub.epub". '
-                            'Looks like you tried to upload a kepub file!'})
+            return JSONResponse(
+                {
+                    "status": "fail",
+                    "message": 'Wrong file extension: ".kepub.epub". Looks like you tried to upload a kepub file!',
+                },
+                status_code=400,
+            )
         if not lowercase_filename.endswith(".epub"):
-            return jsonify({"status": "fail", "message": "Please upload an .epub file."})
+            return JSONResponse(
+                {"status": "fail", "message": "Please upload an .epub file."},
+                status_code=400,
+            )
 
-        random_filename = create_filename(original_filename)
-        file_id = random_filename[:-5]
+        file_id = token_hex(5)
         new_name = Path(original_filename).stem + ".kepub.epub"
-        tmp_dir = Path(current_app.instance_path) / Path(current_app.config["TMP_DIR"])
-        tmp_dir.mkdir(exist_ok=True)
-        save_as = tmp_dir / Path(random_filename)
-        upload_file.save(str(save_as))
+        save_as = settings.tmp_dir / f"{file_id}.epub"
+        with save_as.open("wb") as destination:
+            shutil.copyfileobj(file.file, destination)
+
         try:
-            new_filename = convert(save_as)
+            new_filename = convert(save_as, settings.kepubify_path)
         except ConversionError as err:
-            current_app.logger.error(traceback.format_exc())
-            return jsonify({"status": "fail", "message": str(err), "id": file_id})
+            logger.exception("Conversion failed for upload %s", file_id)
+            cleanup_files(settings.tmp_dir, file_id)
+            return JSONResponse({"status": "fail", "message": str(err), "id": file_id}, status_code=422)
 
-        download_url = url_for("general.download", file=new_filename, name=new_name, id=file_id)
-        return jsonify({"status": "success", "filename": new_name, "download": download_url})
+        download_url = request.url_for("download").include_query_params(file=new_filename, name=new_name, id=file_id)
+        return JSONResponse({"status": "success", "filename": new_name, "download": str(download_url)})
     except Exception:
-        log.exception("Unexpected error")
-        return jsonify({"status": "fail", "message": "unexpected error", "id": file_id})
+        logger.exception("Unexpected error")
+        if file_id:
+            cleanup_files(settings.tmp_dir, file_id)
+        return JSONResponse({"status": "fail", "message": "unexpected error", "id": file_id}, status_code=500)
 
 
-@general.route("/download")
-def download():
-    """Download file."""
-    filename = request.args.get("file")
-    new_name = request.args.get("name")
-    if not filename or not new_name:
-        return jsonify({"status": "fail", "message": "Missing download information."}), 400
-    tmp_dir = Path(current_app.instance_path) / current_app.config["TMP_DIR"]
-    return send_from_directory(str(tmp_dir), filename, download_name=new_name, as_attachment=True)
+@router.get("/download", name="download")
+def download(file: str, name: str, id: str) -> Response:
+    """Return the converted EPUB and remove its temporary files after sending."""
+    if not re.fullmatch(r"[0-9a-f]{10}", id) or file != f"{id}.kepub.epub":
+        return JSONResponse({"status": "fail", "message": "Invalid download information."}, status_code=400)
+    if not name or Path(name.replace("\\", "/")).name != name:
+        return JSONResponse({"status": "fail", "message": "Invalid download name."}, status_code=400)
+
+    converted_file = settings.tmp_dir / file
+    if not converted_file.is_file():
+        return JSONResponse({"status": "fail", "message": "Converted file not found."}, status_code=404)
+
+    return FileResponse(
+        converted_file,
+        media_type="application/epub+zip",
+        filename=name,
+        background=BackgroundTask(cleanup_files, settings.tmp_dir, id),
+    )
 
 
-def convert(in_filepath):
+def convert(in_filepath: Path, kepubify_path: Path) -> str:
     """Convert in_file to kepub and return new file name."""
     new_filename = in_filepath.stem + ".kepub.epub"
-    new_filepath = str(in_filepath.parent / Path(new_filename))
+    new_filepath = in_filepath.parent / new_filename
     p = subprocess.run(
-        [current_app.config["KEPUBIFY_PATH"], str(in_filepath), "-o", new_filepath],
+        [str(kepubify_path), str(in_filepath), "-o", str(new_filepath)],
         capture_output=True,
         check=False,
     )
     if p.returncode != 0:
-        stderr = p.stderr.decode() or ""
-        current_app.logger.error(stderr)
-        stderr = re.sub(str(in_filepath), in_filepath.name, stderr)
+        stderr = p.stderr.decode(errors="replace") or ""
+        logger.error("kepubify failed: %s", stderr)
+        stderr = stderr.replace(str(in_filepath), in_filepath.name)
         raise ConversionError(stderr)
 
     return new_filename
 
 
-def create_filename(in_filename):
-    """Create random filepath."""
-    random_str_len = 10
-    random_name = "".join(random.choices(string.ascii_lowercase + string.digits, k=random_str_len))
-    return random_name + ".epub"
+def cleanup_files(tmp_dir: Path, file_id: str) -> None:
+    """Remove temporary files belonging to an upload."""
+    for path in tmp_dir.glob(f"{file_id}.*"):
+        try:
+            path.unlink()
+        except OSError:
+            logger.exception("Failed to remove temporary file %s", path)
 
 
 class ConversionError(Exception):
