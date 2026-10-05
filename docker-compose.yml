@@ -1,0 +1,23 @@
+services:
+  app:
+    build: .
+    platform: linux/amd64
+    init: true
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${PORT:-8082}:8082"
+    environment:
+      DEBUG: "${DEBUG:-false}"
+      LOG_DIR: /app/logs
+      APPLICATION_ROOT: "${APPLICATION_ROOT:-}"
+      INSTANCE_PATH: /app/instance
+      KEPUBIFY_PATH: /usr/local/bin/kepubify
+      TMP_DIR: /app/instance/tmp
+      TEMP_FILE_RETENTION_SECONDS: "${TEMP_FILE_RETENTION_SECONDS:-86400}"
+    volumes:
+      - app_tmp:/app/instance/tmp
+      - app_logs:/app/logs
+
+volumes:
+  app_tmp:
+  app_logs:

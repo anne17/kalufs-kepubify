@@ -8,9 +8,14 @@ Small FastAPI application for converting epub into kepub.
 * [uv](https://github.com/astral-sh/uv)
 * [kepubify](https://pgaskin.net/kepubify/)
 
+Local, non-Docker runs require a Linux x86-64 kepubify binary; see the setup steps below. Docker downloads kepubify
+v4.0.4 for Linux x86-64 and verifies its pinned SHA-256 checksum, so no local binary is needed for a Docker build.
+The Compose image targets `linux/amd64` (64-bit x86). It runs natively on x86-64 hosts; ARM hosts need Docker's AMD64
+emulation support.
+
 ## Setup
 
-1. Download the [kepubify binary](https://pgaskin.net/kepubify/) and place it at
+1. For non-Docker runs, download the [kepubify binary](https://pgaskin.net/kepubify/) and place it at
    `instance/kepubify-linux-64bit`. Make sure it is executable (e.g. `chmod +x instance/kepubify-linux-64bit`).
 2. Install the dependencies with `uv sync`.
 3. For development, run `uv run run.py`. This launcher enables debug logging and automatic reload; do not use it for
@@ -26,3 +31,36 @@ priority. Available values include `DEBUG`, `LOG_DIR`, `APPLICATION_ROOT`, `INST
 
 Converted files are removed after download, and failed uploads are cleaned up immediately. At startup, temporary files
 older than `temp_file_retention_seconds` are removed. The default retention period is 24 hours.
+
+## Docker
+
+Build and start the container with:
+
+```sh
+docker compose up --build
+```
+
+The Docker build downloads kepubify v4.0.4 directly from its GitHub release and verifies the pinned SHA-256 checksum;
+the local binary is not required for Docker builds.
+
+Open `http://localhost:8082`. Compose stores temporary files and application logs in named volumes. Override `PORT`,
+`DEBUG`, `APPLICATION_ROOT`, or `TEMP_FILE_RETENTION_SECONDS` in a project-root `.env` file. Stop the container with
+`docker compose down`; named volumes are retained unless removed explicitly.
+
+## Deploying
+
+For a Linux server:
+
+1. Install Docker Engine with the Compose plugin, clone this repository, and make sure the server can reach GitHub to
+   download the pinned converter during the image build.
+2. Optionally create a project-root `.env` file. Keep `DEBUG=false`; set `PORT` if the local reverse-proxy upstream
+   should use a port other than `8082`.
+3. Start the service with `docker compose up --build --detach`. Follow startup with `docker compose logs --follow app`.
+4. Configure DNS and a host-installed TLS reverse proxy such as Caddy or Nginx to forward requests to
+   `http://127.0.0.1:8082` (or the configured `PORT`). The Compose port is loopback-only by default, so it is not
+   directly exposed to the network.
+
+The upload endpoint is unauthenticated and the app does not enforce an upload-size limit. Before exposing it publicly,
+configure request-size limits and rate limiting at the reverse proxy. To deploy an update, pull the new code and run
+`docker compose up --build --detach`. `docker compose down` stops the service while retaining its named volumes;
+`docker compose down --volumes` also deletes temporary files and logs.

@@ -1,0 +1,11 @@
+.git
+.venv
+**/.venv
+__pycache__/
+**/__pycache__/
+.ruff_cache/
+logs/
+instance/tmp/
+instance/kepubify-linux-64bit
+.env
+.env.*
