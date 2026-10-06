@@ -75,7 +75,8 @@ def upload(request: Request, file: Annotated[UploadFile | None, File()] = None):
             return JSONResponse({"status": "fail", "message": str(err), "id": file_id}, status_code=422)
 
         download_url = request.url_for("download").include_query_params(file=new_filename, name=new_name, id=file_id)
-        return JSONResponse({"status": "success", "filename": new_name, "download": str(download_url)})
+        relative_download_url = f"{download_url.path}?{download_url.query}"
+        return JSONResponse({"status": "success", "filename": new_name, "download": relative_download_url})
     except Exception:
         logger.exception("Unexpected error")
         if file_id:
