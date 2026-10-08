@@ -50,6 +50,22 @@ Open `http://localhost:8082`. Compose stores temporary files and application log
 `DEBUG`, `APPLICATION_ROOT`, `MAX_UPLOAD_SIZE_BYTES`, or `TEMP_FILE_RETENTION_SECONDS` in a project-root `.env` file.
 Stop the container with `docker compose down`; named volumes are retained unless removed explicitly.
 
+### Logs and the instance directory
+
+When running in Docker, the app uses its own isolated filesystem, separate from the host's. The paths below
+(`/app/logs` and `/app/instance`) exist only there, so you cannot browse them directly in the project directory. Only
+`/app/logs` (volume `app_logs`) and `/app/instance/tmp` (volume `app_tmp`) are persisted in named volumes; the rest of
+`/app/instance` is lost when the container is recreated.
+
+* Uvicorn's console output (requests, startup, shutdown):
+  `docker compose logs --follow app`
+* Application log files (one file per day, e.g. `2026-10-06.log`; with `DEBUG=true` logs go to the console instead):
+  `docker compose exec app ls -la /app/logs` and `docker compose exec app tail -f /app/logs/$(date +%F).log`
+* Instance directory and temporary files: `docker compose exec app ls -la /app/instance /app/instance/tmp`
+* On the host, find where Docker stores the volumes with `docker volume inspect <project>_app_logs <project>_app_tmp`
+  (`<project>` is the Compose project name, by default the directory name). On Linux the `Mountpoint` is under
+  `/var/lib/docker/volumes/` and usually requires root; with Docker Desktop it is inside Docker's VM.
+
 ## Deploying
 
 For a Linux server:
